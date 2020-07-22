@@ -26,3 +26,13 @@ class Review(core_models.TimeStampedModel):
         # return self.room.host.username (room model's host)
         return f"{self.review} - {self.room}"
 
+    def rating_average(self):
+        avg = (
+            self.accuracy
+            + self.communication
+            + self.cleamliness
+            + self.location
+            + self.check_in
+            + self.value
+        ) / 6
+        return round(avg, 2)
