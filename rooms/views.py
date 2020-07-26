@@ -1,6 +1,7 @@
 from django.views.generic import ListView, DetailView
 from django.shortcuts import render
 from django_countries import countries
+from django.db.models import Lookup
 from . import models
 
 
@@ -46,8 +47,8 @@ def search(request):
     bedrooms = int(request.GET.get("bedrooms", 0))
     beds = int(request.GET.get("beds", 0))
     baths = int(request.GET.get("baths", 0))
-    instant = request.GET.get("instant", 0)
-    super_host = request.GET.get("super_host", 0)
+    instant = bool(request.GET.get("instant", False))
+    superhost = bool(request.GET.get("superhost", False))
     s_amenities = request.GET.getlist("amenities")
     s_facilities = request.GET.getlist("facilities")
 
@@ -63,7 +64,7 @@ def search(request):
         "s_amenities": s_amenities,
         "s_facilities": s_facilities,
         "instant": instant,
-        "super_host": super_host,
+        "superhost": superhost,
     }
 
     room_types = models.RoomType.objects.all()
@@ -76,4 +77,46 @@ def search(request):
         "amenities": amenities,
         "facilities": facilities,
     }
-    return render(request, "rooms/search.html", {**form, **choices})
+
+    filter_args = {}
+
+    if city != "Anywhere":
+        filter_args["city__startswith"] = city
+
+    filter_args["country"] = country
+
+    if room_type:
+        filter_args["room_type__pk__exact"] = room_type
+
+    if price:
+        filter_args["price__lte"] = price
+
+    if guests:
+        filter_args["guests__gte"] = price
+
+    if bedrooms:
+        filter_args["bedrooms__gte"] = bedrooms
+
+    if beds:
+        filter_args["beds__gte"] = beds
+
+    if baths:
+        filter_args["baths__gte"] = baths
+
+    if instant:
+        filter_args["instant_book"] = True
+
+    if superhost:
+        filter_args["host__superhost"] = True
+
+    if s_amenities:
+        for s_amenity in s_amenities:
+            filter_args["amenities__pk"] = int(s_amenity)
+
+    if s_facilities:
+        for s_facility in s_facilities:
+            filter_args["facilities__pk"] = int(s_facility)
+
+    rooms = models.Room.objects.filter(**filter_args)
+
+    return render(request, "rooms/search.html", {**form, **choices, "rooms": rooms})
